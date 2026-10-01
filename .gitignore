@@ -1,0 +1,9 @@
+venv/
+.env
+__pycache__/
+.idea/
+
+# 原始语料含真实校名，仓库只放匿名化后的 clean/
+data/raw/
+# 15MB 二进制，可用 scripts/embed_store.py 重新生成
+data/vectors.npy

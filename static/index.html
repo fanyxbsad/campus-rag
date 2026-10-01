@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>校园规章问答助手</title>
+<style>
+  :root {
+    --primary: #03a343;
+    --primary-dark: #009a8d;
+    --bg: #eef2f8;
+    --card: #ffffff;
+    --text: #1f2733;
+    --muted: #7a8699;
+    --border: #e3e8f0;
+    --refuse-bg: #fff8ec;
+    --refuse-border: #f3d9a4;
+    --refuse-text: #8a6116;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex; flex-direction: column;
+  }
+
+  /* ── 顶栏 ── */
+  header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff; padding: 20px 24px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 2px 8px rgba(31, 84, 199, .25);
+    position: sticky; top: 0; z-index: 10;
+  }
+  header .logo { font-size: 30px; }
+  header h1 { font-size: 20px; font-weight: 600; }
+  header .sub { font-size: 12px; opacity: .85; margin-top: 2px; }
+  header .spacer { flex: 1; }
+  header .pill {
+    font-size: 11px; background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.35);
+    padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  }
+
+  /* ── 消息区 ── */
+  #chat {
+    flex: 1; overflow-y: auto; padding: 20px 16px 8px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .msg { max-width: 78%; display: flex; flex-direction: column; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.bot  { align-self: flex-start; align-items: stretch; max-width: 86%; }
+
+  .bubble {
+    padding: 10px 14px; border-radius: 14px; line-height: 1.65;
+    font-size: 14.5px; white-space: pre-wrap; word-break: break-word;
+  }
+  .msg.user .bubble {
+    background: var(--primary); color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.bot .bubble {
+    background: var(--card); border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(31, 45, 82, .06);
+  }
+  /* 助手回答里模型附带的“来源：《…》”行弱化显示 */
+  .bubble .src-line { color: var(--muted); font-size: 12.5px; display: block; margin-top: 6px; }
+
+  /* 拒答样式 */
+  .msg.bot.refused .bubble {
+    background: var(--refuse-bg); border: 1px solid var(--refuse-border);
+    color: var(--refuse-text);
+  }
+
+  /* 元信息 + 引用 */
+  .meta { font-size: 11.5px; color: var(--muted); margin-top: 5px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .meta .badge {
+    padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border);
+    background: #fff;
+  }
+  .meta .badge.hard { color: #b4451f; border-color: #ecc8b8; background: #fdf3ee; }
+  .meta .badge.soft { color: #8a6116; border-color: #f3d9a4; background: #fff8ec; }
+
+  .refs { margin-top: 8px; }
+  .refs summary {
+    font-size: 12px; color: var(--primary); cursor: pointer; user-select: none;
+    list-style: none;
+  }
+  .refs summary::before { content: "▸ "; }
+  .refs[open] summary::before { content: "▾ "; }
+  .refs ol { margin: 6px 0 0 2px; padding-left: 18px; }
+  .refs li { font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+  /* 欢迎卡片 + 推荐问题 */
+  .welcome {
+    align-self: stretch; text-align: center; margin-top: 6vh;
+  }
+  .welcome .big { font-size: 40px; }
+  .welcome h2 { font-size: 18px; margin: 10px 0 6px; }
+  .welcome p { font-size: 13px; color: var(--muted); }
+  .chips {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    margin-top: 22px; padding: 0 8px;
+  }
+  .chip {
+    font-size: 13px; padding: 8px 14px; border-radius: 999px;
+    background: #fff; border: 1px solid var(--border); cursor: pointer;
+    transition: all .15s;
+  }
+  .chip:hover { border-color: var(--primary); color: var(--primary); }
+  .chip.trap { border-style: dashed; color: var(--muted); }
+
+  /* 输入区 ── */
+  footer {
+    padding: 12px 16px 16px; background: var(--bg);
+    border-top: 1px solid var(--border);
+  }
+  .inputbar {
+    max-width: 860px; margin: 0 auto; display: flex; gap: 10px;
+    background: #fff; border: 1px solid var(--border); border-radius: 24px;
+    padding: 6px 6px 6px 18px; align-items: center;
+    box-shadow: 0 2px 10px rgba(31, 45, 82, .07);
+  }
+  .inputbar input {
+    flex: 1; border: none; outline: none; font-size: 15px;
+    background: transparent; color: var(--text); height: 38px;
+  }
+  .inputbar button {
+    border: none; background: var(--primary); color: #fff;
+    font-size: 14px; padding: 9px 20px; border-radius: 999px; cursor: pointer;
+  }
+  .inputbar button:disabled { opacity: .5; cursor: not-allowed; }
+  .disclaimer {
+    max-width: 860px; margin: 8px auto 0; text-align: center;
+    font-size: 11px; color: var(--muted);
+  }
+
+  /* 打字中 */
+  .typing { display: inline-flex; gap: 4px; align-items: center; }
+  .typing i {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
+    animation: blink 1.2s infinite;
+  }
+  .typing i:nth-child(2) { animation-delay: .2s; }
+  .typing i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🎓</div>
+  <div>
+    <h1>校园规章问答助手</h1>
+    <div class="sub">基于《学生手册》等 12 份官方文件 · RAG 检索增强生成</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="pill">不编造答案的好AI</div>
+</header>
+
+<div id="chat"></div>
+
+<footer>
+  <div class="inputbar">
+    <input id="q" type="text" placeholder="例如：转专业需要什么条件？" autocomplete="off">
+    <button id="send">发送</button>
+  </div>
+  <div class="disclaimer">回答由 AI 生成，仅供参考；重要事项请以学校官方文件或教务处答复为准</div>
+</footer>
+
+<script>
+const chat = document.getElementById('chat');
+const input = document.getElementById('q');
+const sendBtn = document.getElementById('send');
+let busy = false;
+
+const SUGGESTIONS = [
+  { text: '转专业需要什么条件？', trap: false },
+  { text: '一等奖学金是多少钱？', trap: false },
+  { text: '宿舍晚上几点熄灯？', trap: false },
+  { text: '图书馆的书怎么续借？', trap: false },
+  { text: '休学最长可以休多久？', trap: false },
+];
+
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function scrollBottom() { chat.scrollTop = chat.scrollHeight; }
+
+/* 把模型回答里自带的“来源：《…》”行拆出来弱化显示 */
+function renderAnswer(text) {
+  const lines = text.trim().split('\n');
+  const body = [], srcs = [];
+  for (const line of lines) {
+    if (/^来源[：:]/.test(line.trim())) srcs.push(line.trim());
+    else body.push(line);
+  }
+  let html = esc(body.join('\n'));
+  for (const s of srcs) html += `<span class="src-line">${esc(s)}</span>`;
+  return html;
+}
+
+function addWelcome() {
+  const w = el('div', 'welcome');
+  w.appendChild(el('div', 'big', '👋'));
+  w.appendChild(el('h2', '', '你好，新同学！'));
+  w.appendChild(el('p', '', '问我任何校园规章制度的问题，我会引用官方文件回答；文件里没有的，我会直接说不知道。'));
+  const chips = el('div', 'chips');
+  for (const s of SUGGESTIONS) {
+    const c = el('button', 'chip' + (s.trap ? ' trap' : ''), esc(s.text));
+    c.onclick = () => ask(s.text.replace('（故意问倒它）', ''));
+    chips.appendChild(c);
+  }
+  w.appendChild(chips);
+  chat.appendChild(w);
+}
+
+function addUser(text) {
+  const m = el('div', 'msg user');
+  m.appendChild(el('div', 'bubble', esc(text)));
+  chat.appendChild(m);
+  scrollBottom();
+}
+
+function addTyping() {
+  const m = el('div', 'msg bot typing-msg');
+  m.innerHTML = '<div class="bubble"><span class="typing"><i></i><i></i><i></i></span> 正在检索官方文件…</div>';
+  chat.appendChild(m);
+  scrollBottom();
+  return m;
+}
+
+function addBot(r) {
+  const m = el('div', 'msg bot' + (r.refused ? ' refused' : ''));
+
+  const bubble = el('div', 'bubble');
+  bubble.innerHTML = renderAnswer(r.answer);
+  m.appendChild(bubble);
+
+  const meta = el('div', 'meta');
+  if (r.hard_refused) {
+    meta.appendChild(el('span', 'badge hard', '⛔ 检索置信度低于阈值 → 直接拒答（未调用大模型）'));
+  } else if (r.refused) {
+    meta.appendChild(el('span', 'badge soft', '🤔 大模型自评：官方文件中无依据'));
+  } else {
+    meta.appendChild(el('span', 'badge', '✅ 基于官方文件回答'));
+  }
+  meta.appendChild(el('span', '', `检索相似度 ${Number(r.score).toFixed(3)}`));
+  m.appendChild(meta);
+
+  if (r.refs && r.refs.length) {
+    const refs = el('details', 'refs');
+    const items = r.refs.map(c =>
+      `<li>《${esc(c.doc)}》${esc(c.chapter)}${c.chapter ? ' ' : ''}${esc(c.article)}</li>`
+    ).join('');
+    refs.innerHTML = `<summary>引用来源（top-${r.refs.length} 检索片段）</summary><ol>${items}</ol>`;
+    m.appendChild(refs);
+  }
+  chat.appendChild(m);
+  scrollBottom();
+}
+
+async function ask(text) {
+  if (busy || !text.trim()) return;
+  busy = true; sendBtn.disabled = true; input.value = '';
+
+  const welcome = chat.querySelector('.welcome');
+  if (welcome) welcome.remove();
+
+  addUser(text);
+  const typing = addTyping();
+  try {
+    const resp = await fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: text }),
+    });
+    const data = await resp.json();
+    typing.remove();
+    if (!resp.ok) {
+      addBot({ answer: '服务出错了：' + (data.error || resp.status), refused: true,
+               hard_refused: true, score: 0, refs: [] });
+    } else {
+      addBot(data);
+    }
+  } catch (e) {
+    typing.remove();
+    addBot({ answer: '网络异常，请稍后重试。', refused: true,
+             hard_refused: true, score: 0, refs: [] });
+  } finally {
+    busy = false; sendBtn.disabled = false; input.focus();
+  }
+}
+
+sendBtn.onclick = () => ask(input.value);
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); ask(input.value); }
+});
+
+addWelcome();
+input.focus();
+</script>
+</body>
+</html>
